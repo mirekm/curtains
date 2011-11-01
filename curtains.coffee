@@ -1,5 +1,5 @@
 ###
-Curtains v0.0.1
+Curtains v0.0.0
 Keyframe based & event-driven general purpose theatre in JavaScript.
 
 Released under MIT Licence.
@@ -49,7 +49,7 @@ class Heart extends EventDispatcher
         clearInterval @cardiacMuscle
         @isBeating = false
     beat: ->
-        console.log "8<------------------------ Entering tick #{@tick}"
+        # console.log "8<------------------------ Entering tick #{@tick}"
         @dispatchEvent 'beat'
         @tick++
 
@@ -57,32 +57,57 @@ class Heart extends EventDispatcher
 class Animation extends EventDispatcher
     @_objectId = 0
     constructor: (@name, @totalFrames=100) ->
+        @id = @_getNextId()
         @currentFrame = 0
-        @currentAnimations = []
-        @frames = []
-        @repeat = false
-        @id = @_getNextObjectId()
-        @_objects = []
-
+        @frames = [] # Keyframes
+        @actors = [] # Animations
+        @currentActors = [] # Current frame animations
+        @parent = null
         console.log "Animation #{@name}, id: #{@id} up..."
         super()
-    _getNextObjectId: () ->
+    _getNextId: () ->
         Animation._objectId++
+    invalidateCrew: (frameNum = @currentFrame) ->
+        console.log "Invalidating crew..."
+        ###
+        TODO: Re-think the sparse array implementation options here
+        ###
+        ret = []
+        frames = @actors[0..frameNum]
+        for frame of frames
+            unless typeof(frame) is 'array' then continue
+            for actor in frame
+                if actor.firstFrame <= frameNum <= actor.getLastFrame()
+                    actor.stage on
+                    ret.push(actor)
+        for frame in @actors[(frameNum+1)...]
+            unless frame then continue
+            for actor in frame
+                if actor.isVisible
+                    actor.stage off
+        @currentActors = ret
+        @isCrewDirty = false
+    getLastFrame: () ->
+        @firstFrame + @totalFrames
     _onEnterFrame: () ->
+        unless @onStage then return
+        if @isCrewDirty
+            # Set up the new crew - only actors playing in this particular frame
+            # should be on the stage (revalidation necessary after jump)
+            @invalidateCrew()
+        # Call all the key-frame actions
         for action in (@frames[@currentFrame] or [])
             action.apply()
+        #console.log "#{@name} in #{@currentFrame}"
         @onEnterFrame(@currentFrame)
-        if @currentFrame == @totalFrames
-            if @repeat
-                @goto(1)
-            else
-                @stop()
     _onExitFrame: () ->
     _beat: () ->
         if @currentFrame
             @dispatchEvent 'exitFrame'
         @currentFrame++
         @dispatchEvent 'enterFrame'
+        if @currentFrame is @totalFrames
+            @stop()
     _startListeners: () ->
         @_stopListeners()
         @enterFrameCallback = () => @_onEnterFrame()
@@ -95,67 +120,81 @@ class Animation extends EventDispatcher
         @removeListener 'enterFrame', @enterFrameCallback
         @removeListener 'exitFrame', @exitFrameCallback
         if @heart then @heart.removeListener 'beat', @beatCallback
+    # This is where you move your stuff around if you're too lazy to get
+    # yourself a proper 'enterFrame' callback
     onEnterFrame: () ->
         #ABSTRACT
+    # Some additional 'set-up' in between the scenes
     onExitFrame: () ->
         #ABSTRACT
+    #
+    visible: (isVisible) ->
+        #ABSTRACT
+    # It's alive!
     attachHeart: (heart) ->
         if @heart then @heart.removeListener 'beat', @beatCallback
         @heart = heart
-    reset: () ->
-        stop(1)
-    start: (frameNum=1) ->
+    # Go get'em Danny!
+    start: (frameNum = 0) ->
         @goto(frameNum)
         @_startListeners()
         @_beat()
+    # - It's over Johnny. It's over.
     stop: (frameNum) ->
         @_stopListeners()
         if frameNum then @goto frameNum
+    # Jumping from one frame to another within a script requires veryfication of a crew.
+    # Some actors may have to leave the stage and the other may need to appear.
+    # It cannot be handled by regular 'stage on/off' callbacks added by
+    # dropOnStage.
     goto: (frameNum) ->
         @currentFrame = frameNum
-    invalidate: () ->
-        ###
-        It invalidate visibility state of all objects on a timeline
-        ###
-        for obj in @_objects
-           obj.visible(obj.firstFrame <= @currentFrame <= (obj.firstFrame+obj.totalFrames))
-    dispose: () ->
-        @stop()
-        @attachHeart(null)
+        @isCrewDirty = true
     addKeyframe: (frameNum, callback) ->
         console.log "Adding keyframe to #{@name} at #{frameNum}"
         unless @frames[frameNum]
             @frames[frameNum] = []
         @frames[frameNum].push callback
-    dropOnStage: (animation, frameNum=1, framesDuration=10000) ->
-        ###
-        Convenience method creating 2 keyframes: one reveling new animatoin on
-        the timeline, the second removing it from it once the framesDuration
-        is satisfied.
-        ###
-        self = @
+    stage: (@onStage) ->
+        console.log "#{@name} is on strage: #{@onStage}"
+        unless @onStage then @stop()
+        @visible @onStage
+    detach: () ->
+        @stage off
+        @firstFrame = null
+        @parent?.removeFromStage animation
+        @parent = null
+    removeFromStage: (animation) ->
+        for frame in @actors
+            if animation in @actors[frame]
+                @actors[frame].remove animation
+    dropOnStage: (animation, frameNum=1, framesDuration=100) ->
+        console.log "Adding child #{animation.name} to #{@name} on frame #{frameNum}"
+        animation.detach()
         animation.firstFrame = frameNum
-        addAction = () =>
-            unless animation in self._objects
-                console.log "Adding child #{animation.name} to #{@name} on frame #{frameNum}"
-                animation.attachHeart @heart
-                self._objects.push(animation)
-            animation.visible true
-            animation.start(@currentFrame - frameNum)
-        @addKeyframe frameNum, addAction
-        disposeAction = () =>
-            animation.stop()
-            animation.visible false
-            #animation.dispose()
-        @addKeyframe frameNum+framesDuration+1, disposeAction
+        unless @actors[frameNum] then @actors[frameNum] = []
+        @actors[frameNum].push animation
+        animation.parent = @
+        animation.attachHeart @heart
+        # Add stage on/off key-frame callbacks to avoid revalidation of the
+        # whole crew each time playhead moves to the next frame during
+        # normal forward playback.
+        stageAction = () =>
+            animation.stage on
+            animation.start()
+        @addKeyframe frameNum, stageAction
+        unstageAction = () =>
+            animation.stage off
+        @addKeyframe frameNum+framesDuration+1, unstageAction
 
 
 class Actor extends Animation
     constructor: (@name, @totalFrames, @initialProperties={}) ->
         super @name, @totalFrames
-        for prop of @initialProperties
-            if prop of @properties
-                @properties[prop] = @initialProperties[prop]
+        # FIXME:
+        #for prop of @initialProperties
+         #   if prop of @properties
+          #      @properties[prop] = @initialProperties[prop]
     tweenProperty: (propName, fromFrame, toFrame, toValue) ->
         self = @
         tweenCallback = null
@@ -163,17 +202,19 @@ class Actor extends Animation
         @addKeyframe fromFrame, () =>
             console.log "Starting tween on #{@name}"
             tweenCallback = () =>
-                self.tween(propName, toFrame, toValue)
+                self.tween(propName, fromFrame, toFrame, toValue)
             self.addListener 'enterFrame', tweenCallback
         @addKeyframe toFrame+1, () =>
             self.removeListener 'enterFrame', tweenCallback
-    tween: (propName, toFrame, toValue) ->
-        framesDelta = 1 + toFrame - @currentFrame
-        valueDelta = toValue - @properties[propName]
-        step = valueDelta / framesDelta
-        @set(propName, @get(propName) + step)
+    # TODO: Implement optional tweeneing/easing method(s)
+    tween: (propName, fromFrame, toFrame, toValue, method='NOT IMPLEMENTED') ->
+        allFrames = toFrame - fromFrame
+        tweenFrame = @currentFrame - fromFrame
+        totalValue = toValue - @initialProperties[propName]
+        whereAmI = tweenFrame / allFrames
+        @set(propName, @initialProperties[propName] + whereAmI*totalValue)
     onEnterFrame: () ->
-        super
+        super()
     set: (propName, value) ->
         @properties[propName] = value
     get: (propName) ->
@@ -183,6 +224,7 @@ class Actor extends Animation
 class Curtains extends Animation
     constructor: (@fps=24, @totalFrames, @autoStart=false) ->
         @attachHeart new Heart @fps, @autoStart
+        @stage on
         console.log 'Curtains up...'
         super 'Curtains', @totalFrames
     up: () ->
@@ -195,47 +237,56 @@ class Curtains extends Animation
 
 
 class Actor2D extends Actor
-    constructor: (@name, @totalFirames, @initialProperties={}, @selector) ->
-        @properties =
-            opacity: 0
-            top: 0
-            left: 0
-            width: 20
-            height: 20
+    constructor: (@name, @totalFrames, @initialProperties={}, @selector) ->
         super @name, @totalFrames, @initialProperties
+        @initialProperties =
+            opacity: parseInt(@get 'opacity')
+            top: parseInt(@get 'top')
+            left: parseInt(@get 'left')
+            width: parseInt(@get 'width')
+            height: parseInt(@get 'height')
+    get: (propName) ->
+        if root.$
+            root.$(@selector).css propName
     set: (propName, value) ->
-        super propName, value
+        #super propName, value
         if root.$
-            root.$(@selector).css(propName, value)
+            root.$(@selector).css propName, value
     visible: (isVisible) ->
-        v = 'none'
-        if isVisible then v = 'block'
+        visibility = 'none'
+        if isVisible then visibility = 'block'
         if root.$
-            root.$(@selector).css('display', v)
+            root.$(@selector).css('display', visibility)
 
 
 test = () ->
     theatre = new Curtains 24, 100
     root.theatre = theatre
     actor01 = new Actor2D 'Actor01', 100, {}, '#actor1'
-    actor01.tweenProperty('top', 1, 100, 100)
+    actor01.tweenProperty 'top', 1, 100, 100
     theatre.dropOnStage actor01, 1, 100
 
-    actor02 = new Actor2D 'Actor02', 10, {}, '#actor2'
-    actor02.tweenProperty('left', 1, 1+theatre.fps*1, 50)
-    actor02.tweenProperty('width', 12, 1+theatre.fps*1, 20)
-    actor02.tweenProperty('height', 12, 1+theatre.fps*1, 20)
+    actor02 = new Actor2D 'Actor02', 50, {}, '#actor2'
+    actor02.tweenProperty 'left', 1, 50, 100
+    actor02.tweenProperty 'width', 25, 50, 40
+    actor02.tweenProperty 'height', 25, 50, 40
     theatre.dropOnStage actor02, 50, 100
 
-    actor03 = new Actor2D 'Actor03', 10, {}, '#actor3'
-    actor03.tweenProperty('left', 12, 1+theatre.fps*1, 100)
-    actor03.tweenProperty('top', 12, 1+theatre.fps*1, 100)
-    actor03.tweenProperty('opacity', 1, 1+theatre.fps*1, 1)
-    theatre.dropOnStage actor03, 10, 100
+    actor03 = new Actor2D 'Actor03', 50, {}, '#actor3'
+    actor03.tweenProperty 'left', 1, 50, 100
+    actor03.tweenProperty 'top', 1, 50, 100
+    actor03.tweenProperty 'opacity', 1, 50, 1
+    actor03.addKeyframe 50, () =>
+        actor03.start(Math.random(50))
+    theatre.dropOnStage actor03, 50, 100
 
     theatre.up()
 
-test()
+if root.$
+    root.$ ->
+        test()
+else
+    test()
 
 # Terminate the show
 #setTimeout(() =>
