@@ -11,13 +11,13 @@ Array::sortBy = (key) -> @sort (a, b) =>
     a.key - b.key
 
 @module = (names, fn) ->
-  names = names.split '.' if typeof names is 'string'
-  space = @[names.shift()] ||= {}
-  space.module ||= @module
-  if names.length
-    space.module names, fn
-  else
-    fn.call space
+    names = names.split '.' if typeof names is 'string'
+    space = @[names.shift()] ||= {}
+    space.module ||= @module
+    if names.length
+        space.module names, fn
+    else
+        fn.call space
 
 root = exports ? @
 
@@ -59,7 +59,6 @@ root = exports ? @
             clearInterval @cardiacMuscle
             @isBeating = false
         beat: ->
-            # console.log "8<------------------------ Entering tick #{@tick}"
             @dispatchEvent 'beat'
             @tick++
 
@@ -80,9 +79,7 @@ root = exports ? @
             Animation._objectId++
         invalidateCrew: (frameNum = @currentFrame) ->
             console.log "Invalidating crew..."
-            ###
-            TODO: Re-think the sparse array implementation options here
-            ###
+            # TODO: Re-think the sparse array implementation options here
             ret = []
             frames = @actors[0..frameNum]
             for frame of frames
@@ -208,10 +205,6 @@ root = exports ? @
     class @Actor extends @Animation
         constructor: (@name, @totalFrames, @initialProperties={}) ->
             super @name, @totalFrames
-            # FIXME:
-            #for prop of @initialProperties
-             #   if prop of @properties
-              #      @properties[prop] = @initialProperties[prop]
         tweenProperty: (propName, fromFrame, toFrame, toValue) ->
             self = @
             tweenCallback = null
@@ -253,20 +246,23 @@ root = exports ? @
                 @heart.stopPumping()
 
 
-    class @Actor2D extends @Actor
-        constructor: (@name, @totalFrames, @initialProperties={}, @selector) ->
+    class @CssActor extends @Actor
+        constructor: (@name, @totalFrames, overrideInitialProperties={}, @selector) ->
             super @name, @totalFrames, @initialProperties
-            @initialProperties =
+            properties =
                 opacity: parseInt(@get 'opacity')
                 top: parseInt(@get 'top')
                 left: parseInt(@get 'left')
                 width: parseInt(@get 'width')
                 height: parseInt(@get 'height')
+            for prop of overrideInitialProperties
+                properties[prop] = overrideInitialProperties[prop]
+                @set prop, properties[prop]
+            @initialProperties = properties
         get: (propName) ->
             if root.$
                 root.$(@selector).css propName
         set: (propName, value) ->
-            #super propName, value
             if root.$
                 root.$(@selector).css propName, value
         visible: (isVisible) ->
