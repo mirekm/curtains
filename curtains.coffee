@@ -1,9 +1,9 @@
 ###
 Curtains v0.0.0
-Keyframe based & event-driven general purpose theatre in JavaScript.
+Key-frame based & event-driven, general purpose theatre in JavaScript.
 
 Released under MIT Licence.
-(C) 2011. Mirek Mencel mirek@mirumee.com | Mirumee Labs.
+(C) 2011, Mirek Mencel mirek@mirumee.com | Mirumee Labs
 ###
 
 Array::remove = (e) -> @[t..t] = [] if (t = @indexOf(e)) > -1
@@ -63,6 +63,7 @@ class Animation extends EventDispatcher
         @actors = [] # Animations
         @currentActors = [] # Current frame animations
         @parent = null
+        @direction = 1
         console.log "Animation #{@name}, id: #{@id} up..."
         super()
     _getNextId: () ->
@@ -104,9 +105,10 @@ class Animation extends EventDispatcher
     _beat: () ->
         if @currentFrame
             @dispatchEvent 'exitFrame'
-        @currentFrame++
+        @setCurrentFrame @currentFrame + @direction
         @dispatchEvent 'enterFrame'
-        if @currentFrame is @totalFrames
+        #console.log "#{@name}: #{@currentFrame} of #{@totalFrames}"
+        if @currentFrame >= @totalFrames
             @stop()
     _startListeners: () ->
         @_stopListeners()
@@ -135,10 +137,13 @@ class Animation extends EventDispatcher
         if @heart then @heart.removeListener 'beat', @beatCallback
         @heart = heart
     # Go get'em Danny!
-    start: (frameNum = 0) ->
+    start: (frameNum = @currentFrame) ->
         @goto(frameNum)
         @_startListeners()
         @_beat()
+    reverse: () ->
+        @direction *= -1
+        console.log "#{@name}: Reversing direction #{@direction}"
     # - It's over Johnny. It's over.
     stop: (frameNum) ->
         @_stopListeners()
@@ -148,8 +153,10 @@ class Animation extends EventDispatcher
     # It cannot be handled by regular 'stage on/off' callbacks added by
     # dropOnStage.
     goto: (frameNum) ->
-        @currentFrame = frameNum
+        @setCurrentFrame frameNum
         @isCrewDirty = true
+    setCurrentFrame: (frameNum) ->
+        @currentFrame = if @totalFrames >= frameNum >= 0 then parseInt frameNum else 0
     addKeyframe: (frameNum, callback) ->
         console.log "Adding keyframe to #{@name} at #{frameNum}"
         unless @frames[frameNum]
@@ -277,7 +284,13 @@ test = () ->
     actor03.tweenProperty 'top', 1, 50, 100
     actor03.tweenProperty 'opacity', 1, 50, 1
     actor03.addKeyframe 50, () =>
-        actor03.start(Math.random(50))
+        actor03.reverse()
+        actor03.start()
+        #actor03.start(Math.random(50))
+        unless root.addOnlyOnce
+            root.addOnlyOnce = () =>
+                actor03.reverse()
+            actor03.addKeyframe 10, root.addOnlyOnce
     theatre.dropOnStage actor03, 50, 100
 
     theatre.up()
@@ -289,6 +302,6 @@ else
     test()
 
 # Terminate the show
-#setTimeout(() =>
+# setTimeout(() =>
 #    theatre.down()
 #, 10000)
