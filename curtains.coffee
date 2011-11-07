@@ -21,6 +21,19 @@ Array::sortBy = (key) -> @sort (a, b) =>
 
 root = exports ? @
 
+@module 'ease', ->
+    class @Quad
+        @in = (t, b, c, d) ->
+            b + Math.pow(t/d, 2)*c
+        @out = (t, b, c, d) ->
+            b - c * (t/=d)*(t-2)
+        @inOut = (t, b, c, d) ->
+            if (t/=d/2) < 1
+                b + c/2*t*t
+            else
+                b - c/2*((--t)*(t - 2) - 1)
+
+
 @module 'curtains', ->
     class @EventDispatcher
         constructor: () ->
@@ -216,13 +229,14 @@ root = exports ? @
                 self.addListener 'enterFrame', tweenCallback
             @addKeyframe toFrame+1, () =>
                 self.removeListener 'enterFrame', tweenCallback
-        # TODO: Implement optional tweeneing/easing method(s)
-        tween: (propName, fromFrame, toFrame, toValue, method='NOT IMPLEMENTED') ->
+        tween: (propName, fromFrame, toFrame, toValue, method = ease.Quad.inOut) ->
             allFrames = toFrame - fromFrame
             tweenFrame = @currentFrame - fromFrame
             totalValue = toValue - @initialProperties[propName]
-            whereAmI = tweenFrame / allFrames
-            @set(propName, @initialProperties[propName] + whereAmI*totalValue)
+            @set propName, method(tweenFrame,
+                                  @initialProperties[propName],
+                                  totalValue,
+                                  allFrames)
         onEnterFrame: () ->
             super()
         set: (propName, value) ->
