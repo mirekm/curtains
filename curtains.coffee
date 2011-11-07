@@ -207,11 +207,18 @@ root = exports ? @
             # whole crew each time playhead moves to the next frame during
             # normal forward playback.
             stageAction = () =>
-                animation.stage on
-                animation.start()
+                if @direction > 0
+                    animation.stage on
+                    animation.start()
+                else
+                    animation.stage off
+                    animation.stop(0)
             @addKeyframe frameNum, stageAction
             unstageAction = () =>
-                animation.stage off
+                if @direction > 0
+                    animation.stage off
+                else
+                    animation.stage on
             @addKeyframe frameNum+framesDuration+1, unstageAction
 
 

@@ -28,9 +28,22 @@ test = () ->
             actor03.addKeyframe 10, root.addOnlyOnce
     theatre.dropOnStage actor03, 50, 100
 
-    actor03_child = new curtains.CssActor 'Actor03 Decor', 25, {left: 0}, '#actor3_decor'
-    actor03_child.tweenProperty 'left', 1, 25, 50
+    actor03_child = new curtains.CssActor 'Actor03 We', 5, {left: 25}, '#actor3_we'
+    actor03_child.tweenProperty 'left', 1, 5, 0
     actor03.dropOnStage actor03_child, 25, 50
+    root.actor = actor03_child.html
+
+    actor03_child = new curtains.CssActor 'Actor03 Build', 5, {left: 50}, '#actor3_build'
+    actor03_child.tweenProperty 'left', 1, 5, 35
+    actor03.dropOnStage actor03_child, 30, 50
+
+    actor03_child = new curtains.CssActor 'Actor03 WebApps', 5, {left: 75}, '#actor3_webapps'
+    actor03_child.tweenProperty 'left', 1, 5, 85
+    actor03.dropOnStage actor03_child, 35, 50
+
+    actor03_child = new curtains.CssActor 'Actor03 Better', 5, {left: 200}, '#actor3_better'
+    actor03_child.tweenProperty 'left', 1, 5, 175
+    actor03.dropOnStage actor03_child, 40, 50
 
     theatre.up()
 
