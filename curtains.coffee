@@ -263,6 +263,8 @@ root = exports ? @
     class @CssActor extends @Actor
         constructor: (@name, @totalFrames, overrideInitialProperties={}, @selector) ->
             super @name, @totalFrames, @initialProperties
+            @reattachChildren = true
+            @html = @$(@selector)
             properties =
                 opacity: parseInt(@get 'opacity')
                 top: parseInt(@get 'top')
@@ -273,14 +275,19 @@ root = exports ? @
                 properties[prop] = overrideInitialProperties[prop]
                 @set prop, properties[prop]
             @initialProperties = properties
+        $: (selector) ->
+            root.$ selector
         get: (propName) ->
-            if root.$
-                root.$(@selector).css propName
+            @html.css propName
         set: (propName, value) ->
-            if root.$
-                root.$(@selector).css propName, value
+            @html.css propName, value
         visible: (isVisible) ->
             visibility = 'none'
             if isVisible then visibility = 'block'
-            if root.$
-                root.$(@selector).css('display', visibility)
+            @html.css 'display', visibility
+        dropOnStage: (animation, frameNum=1, framesDuration=100) ->
+            super animation, frameNum, framesDuration
+            if @reattachChildren
+                @html.append(animation.html)
+                @html.css 'position', 'relative'
+                animation.html.css 'position', 'absolute'

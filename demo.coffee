@@ -28,6 +28,10 @@ test = () ->
             actor03.addKeyframe 10, root.addOnlyOnce
     theatre.dropOnStage actor03, 50, 100
 
+    actor03_child = new curtains.CssActor 'Actor03 Decor', 25, {left: 0}, '#actor3_decor'
+    actor03_child.tweenProperty 'left', 1, 25, 50
+    actor03.dropOnStage actor03_child, 25, 50
+
     theatre.up()
 
 if root.$
