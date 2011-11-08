@@ -52,11 +52,10 @@ root = exports ? @
 
 
     class @Heart extends @EventDispatcher
-        bps: 24
-        isBeating: false
-        tick: 1
-        constructor: (@bps, @autoStart=false) ->
+        constructor: (@bps=24, @autoStart=false) ->
             super()
+            @isBeating = false
+            @tick = 1
             console.log "Hurray, new heart created (autoStart=#{autoStart})"
             if @autoStart then @startPumping()
         startPumping: () ->
@@ -183,7 +182,6 @@ root = exports ? @
                 @frames[frameNum] = []
             @frames[frameNum].push callback
         stage: (@onStage) ->
-            console.log "#{@name} is on strage: #{@onStage}"
             unless @onStage then @stop()
             @visible @onStage
         detach: () ->
@@ -231,6 +229,7 @@ root = exports ? @
             console.log "Creating tween #{propName} #{fromFrame}-#{toFrame}"
             @addKeyframe fromFrame, () =>
                 console.log "Starting tween on #{@name}"
+                self.removeListener 'enterFrame', tweenCallback
                 tweenCallback = () =>
                     self.tween(propName, fromFrame, toFrame, toValue)
                 self.addListener 'enterFrame', tweenCallback
