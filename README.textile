@@ -1,3 +1,3 @@
 h1. Curtains
 
-Key-frame based & event-driven, general purpose theatre in JavaScript.
+A keyframe & event-driven, general purpose theatre in JavaScript.
