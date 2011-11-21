@@ -235,7 +235,7 @@ root = exports ? @
                 self.addListener 'enterFrame', tweenCallback
             @addKeyframe toFrame+1, () =>
                 self.removeListener 'enterFrame', tweenCallback
-        tween: (propName, fromFrame, toFrame, toValue, method = ease.Quad.inOut) ->
+        tween: (propName, fromFrame, toFrame, toValue, method=ease.Quad.inOut) ->
             allFrames = toFrame - fromFrame
             tweenFrame = @currentFrame - fromFrame
             totalValue = toValue - @initialProperties[propName]
@@ -277,6 +277,8 @@ root = exports ? @
                 left: parseInt(@get 'left')
                 width: parseInt(@get 'width')
                 height: parseInt(@get 'height')
+            properties['border-radius'] = parseInt(@get 'border-radius')
+            console.log "Border radius #{@name}: #{@get 'border-radius'}"
             for prop of overrideInitialProperties
                 properties[prop] = overrideInitialProperties[prop]
                 @set prop, properties[prop]
@@ -284,7 +286,10 @@ root = exports ? @
         $: (selector) ->
             root.$ selector
         get: (propName) ->
-            @html.css propName
+            if propName is 'border-radius'
+                @html.css 'border-top-left-radius'
+            else
+                @html.css propName
         set: (propName, value) ->
             @html.css propName, value
         visible: (isVisible) ->

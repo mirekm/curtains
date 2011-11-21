@@ -13,6 +13,7 @@ test = () ->
     actor02.tweenProperty 'left', 1, 50, 100
     actor02.tweenProperty 'width', 25, 50, 40
     actor02.tweenProperty 'height', 25, 50, 40
+    actor02.tweenProperty 'border-radius', 25, 50, 20
     theatre.dropOnStage actor02, 50, 100
 
     actor03 = new curtains.CssActor 'Actor03', 50, {}, '#actor3'
