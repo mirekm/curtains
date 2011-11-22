@@ -314,7 +314,7 @@ root = exports ? @
 
 
     class @CssActor extends @Actor
-        constructor: (@name, @totalFrames, overrideInitialProperties={}, @selector) ->
+        constructor: (@name, @totalFrames, @selector, overrideInitialProperties={}) ->
             super @name, @totalFrames, @initialProperties
             @reattachChildren = true
             @html = @$(@selector)
@@ -325,7 +325,6 @@ root = exports ? @
                 width: parseInt(@get 'width')
                 height: parseInt(@get 'height')
             properties['border-radius'] = parseInt(@get 'border-radius')
-            console.log "Border radius #{@name}: #{@get 'border-radius'}"
             for prop of overrideInitialProperties
                 properties[prop] = overrideInitialProperties[prop]
                 @set prop, properties[prop]
