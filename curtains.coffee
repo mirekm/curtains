@@ -124,7 +124,7 @@ root = exports ? @
 
     class @Animation extends @EventDispatcher
         @_objectId = 0
-        constructor: (@name, @totalFrames=100) ->
+        constructor: (@totalFrames=100, @name) ->
             @id = @_getNextId()
             @currentFrame = 0
             @frames = [] # Keyframes
@@ -132,7 +132,6 @@ root = exports ? @
             @currentActors = [] # Current frame animations
             @parent = null
             @direction = 1
-            console.log "Animation #{@name}, id: #{@id} up..."
             super()
         _getNextId: () ->
             Animation._objectId++
@@ -165,7 +164,6 @@ root = exports ? @
             # Call all the key-frame actions
             for action in (@frames[@currentFrame] or [])
                 action.apply()
-            #console.log "#{@name} in #{@currentFrame}"
             @onEnterFrame(@currentFrame)
         _onExitFrame: () ->
         _beat: () ->
@@ -173,7 +171,6 @@ root = exports ? @
                 @dispatchEvent 'exitFrame'
             @setCurrentFrame @currentFrame + @direction
             @dispatchEvent 'enterFrame'
-            #console.log "#{@name}: #{@currentFrame} of #{@totalFrames}"
             if @currentFrame >= @totalFrames
                 @stop()
         _startListeners: () ->
@@ -209,7 +206,7 @@ root = exports ? @
             @_beat()
         reverse: () ->
             @direction *= -1
-            console.log "#{@name}: Reversing direction #{@direction}"
+            console.log "#{@id}: Reversing direction #{@direction}"
         # - It's over Johnny. It's over.
         stop: (frameNum) ->
             @_stopListeners()
@@ -268,8 +265,8 @@ root = exports ? @
 
 
     class @Actor extends @Animation
-        constructor: (@name, @totalFrames, @initialProperties={}) ->
-            super @name, @totalFrames
+        constructor: (totalFrames, @initialProperties={}, name) ->
+            super totalFrames, name
         tweenProperty: (propName, fromFrame, toFrame, toValue) ->
             self = @
             tweenCallback = null
@@ -299,11 +296,11 @@ root = exports ? @
 
 
     class @Curtains extends @Animation
-        constructor: (@fps=24, @totalFrames, @autoStart=false) ->
+        constructor: (@fps=24, totalFrames, @autoStart=false) ->
             @attachHeart new curtains.Heart @fps, @autoStart
             @stage on
             console.log 'Curtains up...'
-            super 'Curtains', @totalFrames
+            super totalFrames, 'Curtains'
         up: () ->
             unless @heart.isBeating
                 @start(@currentFrame)
@@ -314,10 +311,9 @@ root = exports ? @
 
 
     class @CssActor extends @Actor
-        constructor: (@name, @totalFrames, @selector, overrideInitialProperties={}) ->
-            super @name, @totalFrames, @initialProperties
+        constructor: (totalFrames, @selector, overrideInitialProperties={}, name) ->
             @reattachChildren = true
-            @html = @$(@selector)
+            @html = @getOrCreate @selector
             properties =
                 opacity: parseInt(@get 'opacity')
                 top: parseInt(@get 'top')
@@ -328,9 +324,17 @@ root = exports ? @
             for prop of overrideInitialProperties
                 properties[prop] = overrideInitialProperties[prop]
                 @set prop, properties[prop]
-            @initialProperties = properties
+            super totalFrames, properties, name
         $: (selector) ->
             root.$ selector
+        getOrCreate: (selector) ->
+            if selector
+                return @$(selector)
+            else
+                html = @$('<div/>', { id: @id })
+                if @reattachChildren
+                    @parent?.append(html)
+                return html
         get: (propName) ->
             if propName is 'border-radius'
                 @html.css 'border-top-left-radius'
