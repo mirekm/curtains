@@ -26,9 +26,9 @@ root = exports ? @
         @in = (t, b, c, d) ->
             b + c * t/d
         @out = (t, b, c, d) ->
-            @in t, b, c, d
+            ease.Linear.in t, b, c, d
         @inOut = (t, b, c, d) ->
-            @in t, b, c, d
+            ease.Linear.in t, b, c, d
 
     class @Quad
         @in = (t, b, c, d) ->
@@ -80,6 +80,86 @@ root = exports ? @
             else
                 b + c/2 * (-Math.pow(2, -10 * --t) + 2)
 
+@module 'curtains.utils', ->
+    class @ValueFactory
+        @parseUnitValue: (raw) ->
+            value =
+                value: raw.replace(/([a-zA-Z]+)/gi, ''),
+                unit: (raw.match(/([a-zA-Z]+)/gi) or ['']).join('')
+            return value
+        @getValue: (raw) ->
+            if isNaN raw
+                if typeof(raw) is 'string' and raw.length
+                    raw = raw.split(/\s+/).filter (x) -> x.length
+                    if raw.length > 1
+                        # Complex value ie. '1px 2px 3px'
+                        complex = []
+                        for value in raw
+                            complex.push(curtains.utils.ValueFactory.getValue(value))
+                        return new curtains.utils.ComplexValue complex
+                    else
+                        # Single value: non-tweenable string, color or value with unit
+                        raw = raw[0]
+                        val = curtains.utils.ValueFactory.parseUnitValue(raw)
+                        unless isNaN val.value
+                            return new curtains.utils.NumberValue val.value, val.unit
+                        # Check if this is a color
+                        try
+                            color = new curtains.utils.ColorValue raw
+                            return color
+                        catch err
+                            return new curtains.utils.StringValue raw
+            else
+                # It is a plain number with no units
+                return new curtains.utils.NumberValue raw
+
+    class @Value
+        constructor: (@raw) ->
+        tweenTo: (time, duration, to, method) ->
+            throw "Not implemented."
+        render: () ->
+            @raw
+
+    class @NumberValue extends @Value
+        constructor: (value, @unit) ->
+            @val = Number(value)
+        render: (toRender=@val) ->
+            if @unit
+                "#{toRender}#{@unit}"
+            else
+                toRender
+        tweenTo: (time, duration, to, method) ->
+            @render(method(time, @val, to.val - @val, duration))
+
+    class @ColorValue extends @Value
+        constructor: (raw) ->
+            super raw
+            try
+                @color = new RGBColor raw
+            catch err
+                console.log "Error: Cannot find RGBColor object."
+            if @color and not @color.ok
+                throw "Cannot parse the RGB color."
+        render: () ->
+            @color?.toHex()
+        tweenTo: (time, duration, to, method) ->
+            #TODO:
+
+    class @StringValue extends @Value
+        constructor: (raw) ->
+            super raw
+
+    class @ComplexValue extends @Value
+        constructor: (@values) ->
+        render: (toRender=@values) ->
+            [item.render() for item in toRender].join(' ')
+        tweenTo: (time, duration, to, method) ->
+            ret = []
+            for item, index in @values
+                ret.push(item.tweenTo time, duration, to.values[index], method)
+            console.log "ComplexTweenTo ------> #{ret.join(' ')}"
+            ret.join(' ')
+
 
 @module 'curtains', ->
     class @EventDispatcher
@@ -125,6 +205,7 @@ root = exports ? @
     class @Animation extends @EventDispatcher
         @_objectId = 0
         constructor: (@totalFrames=100, @name) ->
+            super()
             @id = @_getNextId()
             @currentFrame = 0
             @frames = [] # Keyframes
@@ -132,7 +213,6 @@ root = exports ? @
             @currentActors = [] # Current frame animations
             @parent = null
             @direction = 1
-            super()
         _getNextId: () ->
             Animation._objectId++
         invalidateCrew: (frameNum = @currentFrame) ->
@@ -199,6 +279,7 @@ root = exports ? @
         attachHeart: (heart) ->
             if @heart then @heart.removeListener 'beat', @beatCallback
             @heart = heart
+            @dispatchEvent 'heartAttach'
         # Go get'em Danny!
         start: (frameNum = @currentFrame) ->
             @goto(frameNum)
@@ -274,19 +355,26 @@ root = exports ? @
             @addKeyframe fromFrame, () =>
                 console.log "Starting tween on #{@name}"
                 self.removeListener 'enterFrame', tweenCallback
+                from = @get propName
+                to = new curtains.utils.ValueFactory.getValue toValue
+                from.unit = to.unit
                 tweenCallback = () =>
-                    self.tween(propName, fromFrame, toFrame, toValue)
+                    self.tween(propName, fromFrame, toFrame, from, to)
                 self.addListener 'enterFrame', tweenCallback
             @addKeyframe toFrame+1, () =>
                 self.removeListener 'enterFrame', tweenCallback
-        tween: (propName, fromFrame, toFrame, toValue, method=ease.Quad.inOut) ->
+        tween: (propName, fromFrame, toFrame, fromValue, toValue, method=ease.Quad.inOut) ->
             allFrames = toFrame - fromFrame
             tweenFrame = @currentFrame - fromFrame
-            totalValue = toValue - @initialProperties[propName]
-            @set propName, method(tweenFrame,
-                                  @initialProperties[propName],
-                                  totalValue,
-                                  allFrames)
+            newVal = fromValue.tweenTo(tweenFrame, allFrames, toValue, method)
+            @set propName, newVal
+        stage: (onStage) ->
+            super onStage
+            unless onStage
+                do @reset
+        reset: () ->
+            for prop of @initialProperties
+                @set prop, @initialProperties[prop]
         onEnterFrame: () ->
             super()
         set: (propName, value) ->
@@ -297,10 +385,10 @@ root = exports ? @
 
     class @Curtains extends @Animation
         constructor: (@fps=24, totalFrames, @autoStart=false) ->
+            super totalFrames, 'Curtains'
             @attachHeart new curtains.Heart @fps, @autoStart
             @stage on
             console.log 'Curtains up...'
-            super totalFrames, 'Curtains'
         up: () ->
             unless @heart.isBeating
                 @start(@currentFrame)
@@ -312,34 +400,41 @@ root = exports ? @
 
     class @CssActor extends @Actor
         constructor: (totalFrames, @selector, overrideInitialProperties={}, name) ->
+            super totalFrames, null, name
             @reattachChildren = true
             @html = @getOrCreate @selector
+            # Resetable initial properties (only these + overriden will be
+            # reset to the original state when needed ie. actor is staged/ustaged
             properties =
-                opacity: parseInt(@get 'opacity')
-                top: parseInt(@get 'top')
-                left: parseInt(@get 'left')
-                width: parseInt(@get 'width')
-                height: parseInt(@get 'height')
-            properties['border-radius'] = parseInt(@get 'border-radius')
+                opacity: @get 'opacity'
+                top: @get 'top'
+                left: @get 'left'
+                width: @get 'width'
+                height: @get 'height'
             for prop of overrideInitialProperties
-                properties[prop] = overrideInitialProperties[prop]
-                @set prop, properties[prop]
-            super totalFrames, properties, name
+                @set prop, overrideInitialProperties[prop]
+                properties[prop] = curtains.utils.ValueFactory.getValue overrideInitialProperties[prop]
+            @initialProperties = properties
         $: (selector) ->
             root.$ selector
         getOrCreate: (selector) ->
             if selector
                 return @$(selector)
             else
-                html = @$('<div/>', { id: @id })
+                html = @$("<div id=\"#{@id}\"</div>")
                 if @reattachChildren
                     @parent?.append(html)
                 return html
         get: (propName) ->
             if propName is 'border-radius'
-                @html.css 'border-top-left-radius'
+                tl = @html.css 'border-top-left-radius'
+                tr = @html.css 'border-top-right-radius'
+                br = @html.css 'border-bottom-right-radius'
+                bl = @html.css 'border-bottom-left-radius'
+                raw = [tl, tr, br, bl].join(' ')
             else
-                @html.css propName
+                raw = @html.css propName
+            return curtains.utils.ValueFactory.getValue raw
         set: (propName, value) ->
             @html.css propName, value
         visible: (isVisible) ->
