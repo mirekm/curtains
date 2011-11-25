@@ -7,14 +7,17 @@ test = () ->
     actor01 = new curtains.CssActor 100, '#actor1', {opacity: 0}, 'Actor01'
     actor01.tweenProperty 'top', 1, 100, '3em'
     actor01.tweenProperty 'opacity', 1, 100, 1
+    actor01.tweenProperty 'background-color', 50, 100, "#FFFF00"
     theatre.dropOnStage actor01, 1, 100
 
-    actor02 = new curtains.CssActor 50, '#actor2', {'border-radius': 0}
-    actor02.tweenProperty 'left', 1, 50, 100
-    actor02.tweenProperty 'width', 25, 50, 40
-    actor02.tweenProperty 'height', 25, 50, 40
-    actor02.tweenProperty 'border-radius', 25, 50, "20px 0 20 0"
-    theatre.dropOnStage actor02, 50, 100
+    actor02 = new curtains.CssActor 70, '#actor2', {'border-radius': 0}
+    actor02.tweenProperty 'left', 1, 70, 100
+    actor02.tweenProperty 'width', 25, 70, 40
+    actor02.tweenProperty 'height', 25, 70, 40
+    actor02.tweenProperty 'border-radius', 25, 70, "20px 0 20 0"
+    actor02.tweenProperty 'background-color', 1, 35, "#FFFF00"
+    actor02.tweenProperty 'background-color', 35, 70, "#00FFFF"
+    theatre.dropOnStage actor02, 30, 100
 
     actor03 = new curtains.CssActor 50, '#actor3'
     actor03.tweenProperty 'left', 1, 50, 100

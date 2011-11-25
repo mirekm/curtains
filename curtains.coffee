@@ -1,6 +1,6 @@
 ###
 Curtains v0.0.0
-Key-frame based & event-driven, general purpose theatre in JavaScript.
+Keyframe & event-driven, general purpose theatre in JavaScript.
 
 Released under MIT Licence.
 (C) 2011, Mirek Mencel mirek@mirumee.com | Mirumee Labs
@@ -90,6 +90,11 @@ root = exports ? @
         @getValue: (raw) ->
             if isNaN raw
                 if typeof(raw) is 'string' and raw.length
+                    # Is is a color?
+                    if raw.indexOf('rgb') is 0 or raw.indexOf('#') is 0
+                        color = new curtains.utils.ColorValue raw
+                        if color.color and color.color.ok
+                            return color
                     raw = raw.split(/\s+/).filter (x) -> x.length
                     if raw.length > 1
                         # Complex value ie. '1px 2px 3px'
@@ -103,12 +108,7 @@ root = exports ? @
                         val = curtains.utils.ValueFactory.parseUnitValue(raw)
                         unless isNaN val.value
                             return new curtains.utils.NumberValue val.value, val.unit
-                        # Check if this is a color
-                        try
-                            color = new curtains.utils.ColorValue raw
-                            return color
-                        catch err
-                            return new curtains.utils.StringValue raw
+                    return new curtains.utils.StringValue raw
             else
                 # It is a plain number with no units
                 return new curtains.utils.NumberValue raw
@@ -138,12 +138,22 @@ root = exports ? @
                 @color = new RGBColor raw
             catch err
                 console.log "Error: Cannot find RGBColor object."
-            if @color and not @color.ok
-                throw "Cannot parse the RGB color."
+            #if @color and not @color.ok
+            #   throw "Cannot parse the RGB color."
         render: () ->
             @color?.toHex()
         tweenTo: (time, duration, to, method) ->
-            #TODO:
+            if @color and to.color
+                rDelta = to.color.r - @color.r
+                gDelta = to.color.g - @color.g
+                bDelta = to.color.b - @color.b
+                color = new RGBColor ''
+                color.r = Math.round method(time, @color.r, rDelta, duration)
+                color.g = Math.round method(time, @color.g, gDelta, duration)
+                color.b = Math.round method(time, @color.b, bDelta, duration)
+                color.ok = true
+                color.toHex()
+
 
     class @StringValue extends @Value
         constructor: (raw) ->
@@ -157,7 +167,6 @@ root = exports ? @
             ret = []
             for item, index in @values
                 ret.push(item.tweenTo time, duration, to.values[index], method)
-            console.log "ComplexTweenTo ------> #{ret.join(' ')}"
             ret.join(' ')
 
 
@@ -353,7 +362,7 @@ root = exports ? @
             tweenCallback = null
             console.log "Creating tween #{propName} #{fromFrame}-#{toFrame}"
             @addKeyframe fromFrame, () =>
-                console.log "Starting tween on #{@name}"
+                console.log "Starting tween on #{@name} / #{propName}"
                 self.removeListener 'enterFrame', tweenCallback
                 from = @get propName
                 to = new curtains.utils.ValueFactory.getValue toValue
@@ -426,15 +435,16 @@ root = exports ? @
                     @parent?.append(html)
                 return html
         get: (propName) ->
-            if propName is 'border-radius'
-                tl = @html.css 'border-top-left-radius'
-                tr = @html.css 'border-top-right-radius'
-                br = @html.css 'border-bottom-right-radius'
-                bl = @html.css 'border-bottom-left-radius'
-                raw = [tl, tr, br, bl].join(' ')
-            else
-                raw = @html.css propName
-            return curtains.utils.ValueFactory.getValue raw
+            switch propName
+                when 'border-radius'
+                    tl = @html.css 'border-top-left-radius'
+                    tr = @html.css 'border-top-right-radius'
+                    br = @html.css 'border-bottom-right-radius'
+                    bl = @html.css 'border-bottom-left-radius'
+                    raw = [tl, tr, br, bl].join(' ')
+                else
+                    raw = @html.css propName
+            curtains.utils.ValueFactory.getValue raw
         set: (propName, value) ->
             @html.css propName, value
         visible: (isVisible) ->
