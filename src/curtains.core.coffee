@@ -90,7 +90,7 @@ root = exports ? @
         @getValue: (raw, propName='') ->
             if isNaN raw
                 if typeof(raw) is 'string' and raw.length
-                    if propName.indexOf('transform') >= 0
+                    if propName.indexOf('trans') >= 0
                         transform = new curtains.utils.MatrixValue raw
                         if transform.ok
                             return transform
@@ -287,7 +287,6 @@ root = exports ? @
             Animation._objectId++
         invalidateCrew: (frameNum = @currentFrame) ->
             console.log "Invalidating crew..."
-            # TODO: Re-think the sparse array implementation options here
             ret = []
             frames = @actors[0..frameNum]
             for frame of frames
@@ -496,18 +495,31 @@ root = exports ? @
                     @parent?.append(html)
                 return html
         get: (propName) ->
-            switch propName
-                when 'border-radius'
-                    tl = @html.css 'border-top-left-radius'
-                    tr = @html.css 'border-top-right-radius'
-                    br = @html.css 'border-bottom-right-radius'
-                    bl = @html.css 'border-bottom-left-radius'
-                    raw = [tl, tr, br, bl].join(' ')
+            if propName is 'border-radius'
+                tl = @html.css 'border-top-left-radius'
+                tr = @html.css 'border-top-right-radius'
+                br = @html.css 'border-bottom-right-radius'
+                bl = @html.css 'border-bottom-left-radius'
+                raw = [tl, tr, br, bl].join(' ')
+            else
+                if propName.indexOf('trans') >= 0
+                    raw = @html.css('-moz-transform') or
+                          @html.css('-webkit-transform') or
+                          @html.css('-o-transform') or
+                          @html.css('-ms-transform')
                 else
                     raw = @html.css propName
             curtains.utils.ValueFactory.getValue raw, propName
         set: (propName, value) ->
-            @html.css propName, value
+            if propName.indexOf('trans') >= 0
+                @html.css '-moz-transform', value
+                @html.css '-webkit-transform', value
+                @html.css '-o-transform', value
+                @html.css '-ms-transform', value
+            else
+                @html.css propName, value
+            return
+
         visible: (isVisible) ->
             visibility = 'none'
             if isVisible then visibility = 'block'

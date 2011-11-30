@@ -193,7 +193,7 @@
         if (propName == null) propName = '';
         if (isNaN(raw)) {
           if (typeof raw === 'string' && raw.length) {
-            if (propName.indexOf('transform') >= 0) {
+            if (propName.indexOf('trans') >= 0) {
               transform = new curtains.utils.MatrixValue(raw);
               if (transform.ok) return transform;
             }
@@ -857,22 +857,31 @@
 
       CssActor.prototype.get = function(propName) {
         var bl, br, raw, tl, tr;
-        switch (propName) {
-          case 'border-radius':
-            tl = this.html.css('border-top-left-radius');
-            tr = this.html.css('border-top-right-radius');
-            br = this.html.css('border-bottom-right-radius');
-            bl = this.html.css('border-bottom-left-radius');
-            raw = [tl, tr, br, bl].join(' ');
-            break;
-          default:
+        if (propName === 'border-radius') {
+          tl = this.html.css('border-top-left-radius');
+          tr = this.html.css('border-top-right-radius');
+          br = this.html.css('border-bottom-right-radius');
+          bl = this.html.css('border-bottom-left-radius');
+          raw = [tl, tr, br, bl].join(' ');
+        } else {
+          if (propName.indexOf('trans') >= 0) {
+            raw = this.html.css('-moz-transform') || this.html.css('-webkit-transform') || this.html.css('-o-transform') || this.html.css('-ms-transform');
+          } else {
             raw = this.html.css(propName);
+          }
         }
         return curtains.utils.ValueFactory.getValue(raw, propName);
       };
 
       CssActor.prototype.set = function(propName, value) {
-        return this.html.css(propName, value);
+        if (propName.indexOf('trans') >= 0) {
+          this.html.css('-moz-transform', value);
+          this.html.css('-webkit-transform', value);
+          this.html.css('-o-transform', value);
+          this.html.css('-ms-transform', value);
+        } else {
+          this.html.css(propName, value);
+        }
       };
 
       CssActor.prototype.visible = function(isVisible) {
