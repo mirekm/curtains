@@ -188,10 +188,15 @@
         return value;
       };
 
-      ValueFactory.getValue = function(raw) {
-        var color, complex, val, value, _i, _len;
+      ValueFactory.getValue = function(raw, propName) {
+        var color, complex, transform, val, value, _i, _len;
+        if (propName == null) propName = '';
         if (isNaN(raw)) {
           if (typeof raw === 'string' && raw.length) {
+            if (propName.indexOf('transform') >= 0) {
+              transform = new curtains.utils.MatrixValue(raw);
+              if (transform.ok) return transform;
+            }
             if (raw.indexOf('rgb') === 0 || raw.indexOf('#') === 0) {
               color = new curtains.utils.ColorValue(raw);
               if (color.color && color.color.ok) return color;
@@ -312,7 +317,7 @@
       return StringValue;
 
     }).call(this);
-    return this.ComplexValue = (function() {
+    this.ComplexValue = (function() {
 
       __extends(ComplexValue, this.Value);
 
@@ -348,6 +353,81 @@
       };
 
       return ComplexValue;
+
+    }).call(this);
+    return this.MatrixValue = (function() {
+
+      __extends(MatrixValue, this.Value);
+
+      function MatrixValue(raw) {
+        var translate, val;
+        this.ok = true;
+        val = raw.match(/[-+]?[0-9]*\.?[0-9]+/gi);
+        translate = raw.slice(0, 3);
+        this.matrix = new curtains.geom.Matrix2D();
+        this.rotation = 0;
+        switch (translate) {
+          case 'mat':
+            this.matrix = new curtains.geom.Matrix2D([[Number(val[0]), Number(val[1])], [Number(val[2]), Number(val[3])]]);
+            this.rotation = this.matrix.rotation;
+            break;
+          case 'rot':
+            this.rotate(val[0]);
+            break;
+          case 'tra':
+            this.translate = Number(val);
+            break;
+          case 'ske':
+            this.skew = Number(val);
+            break;
+          case 'sca':
+            this.scale = Number(val);
+            break;
+          case 'non':
+            break;
+          default:
+            this.ok = false;
+        }
+      }
+
+      MatrixValue.prototype.render = function(toRender) {
+        if (toRender == null) toRender = this.matrix;
+        return "matrix(" + (toRender.mat[0][0].toFixed(6)) + ",                           " + (toRender.mat[0][1].toFixed(6)) + ",                           " + (toRender.mat[1][0].toFixed(6)) + ",                           " + (toRender.mat[1][1].toFixed(6)) + ", 0, 0)";
+      };
+
+      MatrixValue.prototype.tweenTo = function(time, duration, to, method) {
+        var interpolated, rotated;
+        interpolated = method(time, this.rotation, to.rotation, duration);
+        rotated = this.matrix.rotate(interpolated);
+        return this.render(rotated);
+      };
+
+      MatrixValue.prototype.interpolateMatrix = function(time, duration, to, method) {
+        var a, aDelta, b, bDelta, c, cDelta, d, dDelta;
+        aDelta = to.matrix.mat[0][0] - this.matrix.mat[0][0];
+        bDelta = to.matrix.mat[0][1] - this.matrix.mat[0][1];
+        cDelta = to.matrix.mat[1][0] - this.matrix.mat[1][0];
+        dDelta = to.matrix.mat[1][1] - this.matrix.mat[1][1];
+        a = method(time, this.matrix.mat[0][0], aDelta, duration);
+        b = method(time, this.matrix.mat[0][1], bDelta, duration);
+        c = method(time, this.matrix.mat[1][0], cDelta, duration);
+        d = method(time, this.matrix.mat[1][1], dDelta, duration);
+        ret(new curtains.geom.Matrix2D([[a, b], [c, d]]));
+        return this.render(ret);
+      };
+
+      MatrixValue.prototype.rotate = function(deg) {
+        if (deg == null) deg = this.rot;
+        return this.rotation = curtains.geom.Utils.deg2rad(deg);
+      };
+
+      MatrixValue.prototype.skew = function(x, y) {};
+
+      MatrixValue.prototype.translate = function(x, y) {};
+
+      MatrixValue.prototype.scale = function(x, y) {};
+
+      return MatrixValue;
 
     }).call(this);
   });
@@ -656,7 +736,7 @@
           console.log("Starting tween on " + _this.name + " / " + propName);
           self.removeListener('enterFrame', tweenCallback);
           from = _this.get(propName);
-          to = new curtains.utils.ValueFactory.getValue(toValue);
+          to = new curtains.utils.ValueFactory.getValue(toValue, propName);
           from.unit = to.unit;
           tweenCallback = function() {
             return self.tween(propName, fromFrame, toFrame, from, to);
@@ -788,7 +868,7 @@
           default:
             raw = this.html.css(propName);
         }
-        return curtains.utils.ValueFactory.getValue(raw);
+        return curtains.utils.ValueFactory.getValue(raw, propName);
       };
 
       CssActor.prototype.set = function(propName, value) {

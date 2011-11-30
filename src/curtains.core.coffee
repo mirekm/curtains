@@ -87,10 +87,14 @@ root = exports ? @
                 value: raw.replace(/([a-zA-Z]+)/gi, ''),
                 unit: (raw.match(/([a-zA-Z]+)/gi) or ['']).join('')
             return value
-        @getValue: (raw) ->
+        @getValue: (raw, propName='') ->
             if isNaN raw
                 if typeof(raw) is 'string' and raw.length
-                    # Is is a color?
+                    if propName.indexOf('transform') >= 0
+                        transform = new curtains.utils.MatrixValue raw
+                        if transform.ok
+                            return transform
+                    # Color?
                     if raw.indexOf('rgb') is 0 or raw.indexOf('#') is 0
                         color = new curtains.utils.ColorValue raw
                         if color.color and color.color.ok
@@ -138,8 +142,6 @@ root = exports ? @
                 @color = new RGBColor raw
             catch err
                 console.log "Error: Cannot find RGBColor object."
-            #if @color and not @color.ok
-            #   throw "Cannot parse the RGB color."
         render: () ->
             @color?.toHex()
         tweenTo: (time, duration, to, method) ->
@@ -154,7 +156,6 @@ root = exports ? @
                 color.ok = true
                 color.toHex()
 
-
     class @StringValue extends @Value
         constructor: (raw) ->
             super raw
@@ -168,6 +169,66 @@ root = exports ? @
             for item, index in @values
                 ret.push(item.tweenTo time, duration, to.values[index], method)
             ret.join(' ')
+
+
+    class @MatrixValue extends @Value
+        constructor: (raw) ->
+            @ok = true
+            val = raw.match /[-+]?[0-9]*\.?[0-9]+/gi
+            translate = raw[0..2]
+            @matrix = new curtains.geom.Matrix2D()
+            @rotation = 0
+            switch translate
+                when 'mat'
+                    # |(0) cos(rot), (1) -sin(rot)| |(4) tx|
+                    # |(2) sin(rot), (3)  cos(rot)| |(5) ty|
+                    @matrix = new curtains.geom.Matrix2D [[Number(val[0]), Number(val[1])],
+                                                          [Number(val[2]), Number(val[3])]]
+                    @rotation = @matrix.rotation
+                when 'rot'
+                    @rotate(val[0])
+                when 'tra'
+                    @translate = Number(val)
+                when 'ske'
+                    @skew = Number(val)
+                when 'sca'
+                    @scale = Number(val)
+                when 'non'
+                else
+                    @ok = false
+        render: (toRender=@matrix) ->
+            return "matrix(#{toRender.mat[0][0].toFixed(6)},
+                           #{toRender.mat[0][1].toFixed(6)},
+                           #{toRender.mat[1][0].toFixed(6)},
+                           #{toRender.mat[1][1].toFixed(6)}, 0, 0)"
+        tweenTo: (time, duration, to, method) ->
+            interpolated = method(time,
+                                  @rotation,
+                                  to.rotation,
+                                  duration)
+            rotated = @matrix.rotate interpolated
+            @render rotated
+        # Deprecated
+        interpolateMatrix: (time, duration, to, method) ->
+            aDelta = to.matrix.mat[0][0] - @matrix.mat[0][0]
+            bDelta = to.matrix.mat[0][1] - @matrix.mat[0][1]
+            cDelta = to.matrix.mat[1][0] - @matrix.mat[1][0]
+            dDelta = to.matrix.mat[1][1] - @matrix.mat[1][1]
+            a = method(time, @matrix.mat[0][0], aDelta, duration)
+            b = method(time, @matrix.mat[0][1], bDelta, duration)
+            c = method(time, @matrix.mat[1][0], cDelta, duration)
+            d = method(time, @matrix.mat[1][1], dDelta, duration)
+            ret new curtains.geom.Matrix2D([[a, b], [c, d]])
+            @render ret
+        rotate: (deg=@rot) ->
+            @rotation = curtains.geom.Utils.deg2rad(deg)
+            #@matrix = @matrix.rotate(deg, true)
+        skew: (x, y) ->
+            # TODO:
+        translate: (x, y) ->
+            # TODO:
+        scale: (x, y) ->
+            # TODO:
 
 
 @module 'curtains', ->
@@ -365,7 +426,7 @@ root = exports ? @
                 console.log "Starting tween on #{@name} / #{propName}"
                 self.removeListener 'enterFrame', tweenCallback
                 from = @get propName
-                to = new curtains.utils.ValueFactory.getValue toValue
+                to = new curtains.utils.ValueFactory.getValue toValue, propName
                 from.unit = to.unit
                 tweenCallback = () =>
                     self.tween(propName, fromFrame, toFrame, from, to)
@@ -444,7 +505,7 @@ root = exports ? @
                     raw = [tl, tr, br, bl].join(' ')
                 else
                     raw = @html.css propName
-            curtains.utils.ValueFactory.getValue raw
+            curtains.utils.ValueFactory.getValue raw, propName
         set: (propName, value) ->
             @html.css propName, value
         visible: (isVisible) ->

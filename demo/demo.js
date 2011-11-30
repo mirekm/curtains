@@ -19,11 +19,13 @@
       'border-radius': 0
     });
     actor02.tweenProperty('left', 1, 70, 100);
-    actor02.tweenProperty('width', 25, 70, 40);
-    actor02.tweenProperty('height', 25, 70, 40);
-    actor02.tweenProperty('border-radius', 25, 70, "20px 0 20 0");
     actor02.tweenProperty('background-color', 1, 35, "#FFFF00");
     actor02.tweenProperty('background-color', 35, 70, "#00FFFF");
+    actor02.tweenProperty('-moz-transform', 1, 25, "rotate(45deg)");
+    actor02.tweenProperty('height', 25, 45, 40);
+    actor02.tweenProperty('width', 25, 45, 40);
+    actor02.tweenProperty('border-radius', 45, 70, "20px 0 20 0");
+    actor02.tweenProperty('-moz-transform', 45, 70, "rotate(45deg)");
     theatre.dropOnStage(actor02, 30, 100);
     actor03 = new curtains.CssActor(50, '#actor3');
     actor03.tweenProperty('left', 1, 50, 100);
@@ -65,6 +67,8 @@
 
   if (root.$) {
     root.$(function() {
+      console.log((new curtains.geom.Matrix2D()).rotate(Math.PI));
+      console.log('---');
       return test();
     });
   } else {
