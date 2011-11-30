@@ -55,8 +55,6 @@ test = () ->
 
 if root.$
     root.$ ->
-        console.log (new curtains.geom.Matrix2D()).rotate(Math.PI)
-        console.log '---'
         test()
 else
     test()

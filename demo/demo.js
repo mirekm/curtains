@@ -67,8 +67,6 @@
 
   if (root.$) {
     root.$(function() {
-      console.log((new curtains.geom.Matrix2D()).rotate(Math.PI));
-      console.log('---');
       return test();
     });
   } else {
