@@ -712,7 +712,7 @@
             return animation.stage(true);
           }
         };
-        return this.addKeyframe(frameNum + framesDuration + 1, unstageAction);
+        return this.addKeyframe(frameNum + framesDuration, unstageAction);
       };
 
       return Animation;

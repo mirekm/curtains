@@ -413,7 +413,7 @@ root = exports ? @
                     animation.stage off
                 else
                     animation.stage on
-            @addKeyframe frameNum+framesDuration+1, unstageAction
+            @addKeyframe frameNum+framesDuration, unstageAction
 
 
     class @Actor extends @Animation
