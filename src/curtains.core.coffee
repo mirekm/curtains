@@ -354,12 +354,14 @@ root = exports ? @
             @goto(frameNum)
             @_startListeners()
             @_beat()
+            @dispatchEvent 'onStart'
         reverse: () ->
             @direction *= -1
-            console.log "#{@id}: Reversing direction #{@direction}"
+            @dispatchEvent 'onReverse'
         # - It's over Johnny. It's over.
         stop: (frameNum) ->
             @_stopListeners()
+            @dispatchEvent 'onStop'
             if frameNum then @goto frameNum
         # Jumping from one frame to another within a script requires veryfication of a crew.
         # Some actors may have to leave the stage and the other may need to appear.

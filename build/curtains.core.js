@@ -624,16 +624,18 @@
         if (frameNum == null) frameNum = this.currentFrame;
         this.goto(frameNum);
         this._startListeners();
-        return this._beat();
+        this._beat();
+        return this.dispatchEvent('onStart');
       };
 
       Animation.prototype.reverse = function() {
         this.direction *= -1;
-        return console.log("" + this.id + ": Reversing direction " + this.direction);
+        return this.dispatchEvent('onReverse');
       };
 
       Animation.prototype.stop = function(frameNum) {
         this._stopListeners();
+        this.dispatchEvent('onStop');
         if (frameNum) return this.goto(frameNum);
       };
 
