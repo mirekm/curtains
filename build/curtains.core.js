@@ -42,6 +42,47 @@
   root = typeof exports !== "undefined" && exports !== null ? exports : this;
 
   this.module('curtains.utils', function() {
+    this.Color = (function() {
+
+      function Color() {}
+
+      Color.hsv2rgb = function(h, s, v) {
+        var b, f, g, i, p, q, r, t, _ref, _ref2, _ref3, _ref4, _ref5, _ref6;
+        if (!s) {
+          r = g = b = v;
+          return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        }
+        h /= 60;
+        i = Math.floor(h);
+        f = h - i;
+        p = v * (1 - s);
+        q = v * (1 - s * f);
+        t = v * (1 - s * (1 - f));
+        switch (i) {
+          case 0:
+            _ref = [v, t, p], r = _ref[0], g = _ref[1], b = _ref[2];
+            break;
+          case 1:
+            _ref2 = [q, v, p], r = _ref2[0], g = _ref2[1], b = _ref2[2];
+            break;
+          case 2:
+            _ref3 = [p, v, t], r = _ref3[0], g = _ref3[1], b = _ref3[2];
+            break;
+          case 3:
+            _ref4 = [p, q, v], r = _ref4[0], g = _ref4[1], b = _ref4[2];
+            break;
+          case 4:
+            _ref5 = [t, p, v], r = _ref5[0], g = _ref5[1], b = _ref5[2];
+            break;
+          default:
+            _ref6 = [v, p, q], r = _ref6[0], g = _ref6[1], b = _ref6[2];
+        }
+        return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+      };
+
+      return Color;
+
+    })();
     this.ValueFactory = (function() {
 
       function ValueFactory() {}

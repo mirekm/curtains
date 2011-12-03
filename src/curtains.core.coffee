@@ -23,6 +23,27 @@ root = exports ? @
 
 
 @module 'curtains.utils', ->
+    class @Color
+        @hsv2rgb: (h, s, v) ->
+            unless s
+                r = g = b = v
+                return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)]
+            h /= 60
+            i  = Math.floor(h)
+            f = h - i
+            p = v *  (1 - s)
+            q = v * (1 - s * f)
+            t = v * (1 - s * (1 - f))
+            switch i
+                when 0 then [r, g, b] = [v, t, p]
+                when 1 then [r, g, b] = [q, v, p]
+                when 2 then [r, g, b] = [p, v ,t]
+                when 3 then [r, g, b] = [p, q, v]
+                when 4 then [r, g, b] = [t, p, v]
+                else [r, g, b] = [v, p, q]
+            [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)]
+
+
     class @ValueFactory
         @parseUnitValue: (raw) ->
             value =
