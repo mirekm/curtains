@@ -41,139 +41,6 @@
 
   root = typeof exports !== "undefined" && exports !== null ? exports : this;
 
-  this.module('ease', function() {
-    this.Linear = (function() {
-
-      function Linear() {}
-
-      Linear["in"] = function(t, b, c, d) {
-        return b + c * t / d;
-      };
-
-      Linear.out = function(t, b, c, d) {
-        return ease.Linear["in"](t, b, c, d);
-      };
-
-      Linear.inOut = function(t, b, c, d) {
-        return ease.Linear["in"](t, b, c, d);
-      };
-
-      return Linear;
-
-    })();
-    this.Quad = (function() {
-
-      function Quad() {}
-
-      Quad["in"] = function(t, b, c, d) {
-        return b + c * (t /= d) * t;
-      };
-
-      Quad.out = function(t, b, c, d) {
-        return b - c * (t /= d) * (t - 2);
-      };
-
-      Quad.inOut = function(t, b, c, d) {
-        if ((t /= d / 2) < 1) {
-          return b + c / 2 * t * t;
-        } else {
-          return b - c / 2 * ((--t) * (t - 2) - 1);
-        }
-      };
-
-      return Quad;
-
-    })();
-    this.Cubic = (function() {
-
-      function Cubic() {}
-
-      Cubic["in"] = function(t, b, c, d) {
-        return b + c * Math.pow(t / d, 3);
-      };
-
-      Cubic.out = function(t, b, c, d) {
-        return b + c * (Math.pow(t / d - 1, 3) + 1);
-      };
-
-      Cubic.inOut = function(t, b, c, d) {
-        if ((t /= d / 2) < 1) {
-          return b + c / 2 * Math.pow(t, 3);
-        } else {
-          return b + c / 2 * (Math.pow(t - 2, 3) + 2);
-        }
-      };
-
-      return Cubic;
-
-    })();
-    this.Sine = (function() {
-
-      function Sine() {}
-
-      Sine["in"] = function(t, b, c, d) {
-        return b + c * (1 - Math.cos(t / d * (Math.PI / 2)));
-      };
-
-      Sine.out = function(t, b, c, d) {
-        return b + c * Math.sin(t / d * (Math.PI / 2));
-      };
-
-      Sine.inOut = function(t, b, c, d) {
-        return b + c / 2 * (1 - Math.cos(Math.PI * t / d));
-      };
-
-      return Sine;
-
-    })();
-    this.Circ = (function() {
-
-      function Circ() {}
-
-      Circ["in"] = function(t, b, c, d) {
-        return b + c * (1 - Math.sqrt(1 - (t /= d) * t));
-      };
-
-      Circ.out = function(t, b, c, d) {
-        return b + c * Math.sqrt(1 - (t = t / d - 1) * t);
-      };
-
-      Circ.inOut = function(t, b, c, d) {
-        if ((t /= d / 2) < 1) {
-          return b + c / 2 * (1 - Math.sqrt(1 - t * t));
-        } else {
-          return b + c / 2 * (Math.sqrt(1 - (t -= 2) * t) + 1);
-        }
-      };
-
-      return Circ;
-
-    })();
-    return this.Expo = (function() {
-
-      function Expo() {}
-
-      Expo["in"] = function(t, b, c, d) {
-        return b + c * Math.pow(2, 10 * (t / d - 1));
-      };
-
-      Expo.out = function(t, b, c, d) {
-        return b + c * (-Math.pow(2, -10 * t / d) + 1);
-      };
-
-      Expo.inOut = function(t, b, c, d) {
-        if ((t /= d / 2) < 1) {
-          return b + c / 2 * Math.pow(2, 10 * (t - 1));
-        } else {
-          return b + c / 2 * (-Math.pow(2, -10 * --t) + 2);
-        }
-      };
-
-      return Expo;
-
-    })();
-  });
-
   this.module('curtains.utils', function() {
     this.ValueFactory = (function() {
 
@@ -193,7 +60,7 @@
         if (propName == null) propName = '';
         if (isNaN(raw)) {
           if (typeof raw === 'string' && raw.length) {
-            if (propName.indexOf('trans') >= 0) {
+            if (propName.indexOf('origin') < 0 && propName.indexOf('trans') >= 0) {
               transform = new curtains.utils.MatrixValue(raw);
               if (transform.ok) return transform;
             }
@@ -360,13 +227,13 @@
       __extends(MatrixValue, this.Value);
 
       function MatrixValue(raw) {
-        var translate, val;
+        var transform, val;
         this.ok = true;
         val = raw.match(/[-+]?[0-9]*\.?[0-9]+/gi);
-        translate = raw.slice(0, 3);
+        transform = raw.slice(0, 3);
         this.matrix = new curtains.geom.Matrix2D();
         this.rotation = 0;
-        switch (translate) {
+        switch (transform) {
           case 'mat':
             this.matrix = new curtains.geom.Matrix2D([[Number(val[0]), Number(val[1])], [Number(val[2]), Number(val[3])]]);
             this.rotation = this.matrix.rotation;
@@ -392,7 +259,7 @@
 
       MatrixValue.prototype.render = function(toRender) {
         if (toRender == null) toRender = this.matrix;
-        return "matrix(" + (toRender.mat[0][0].toFixed(6)) + ",                           " + (toRender.mat[0][1].toFixed(6)) + ",                           " + (toRender.mat[1][0].toFixed(6)) + ",                           " + (toRender.mat[1][1].toFixed(6)) + ", 0, 0)";
+        return "matrix(" + (toRender.mat[0][0].toFixed(6)) + ",                           " + (toRender.mat[0][1].toFixed(6)) + ",                           " + (toRender.mat[1][0].toFixed(6)) + ",                           " + (toRender.mat[1][1].toFixed(6)) + ",                           " + (+toRender.tx) + "pt,                           " + (+toRender.ty) + "pt)";
       };
 
       MatrixValue.prototype.tweenTo = function(time, duration, to, method) {
@@ -403,7 +270,7 @@
       };
 
       MatrixValue.prototype.interpolateMatrix = function(time, duration, to, method) {
-        var a, aDelta, b, bDelta, c, cDelta, d, dDelta;
+        var a, aDelta, b, bDelta, c, cDelta, d, dDelta, ret;
         aDelta = to.matrix.mat[0][0] - this.matrix.mat[0][0];
         bDelta = to.matrix.mat[0][1] - this.matrix.mat[0][1];
         cDelta = to.matrix.mat[1][0] - this.matrix.mat[1][0];
@@ -412,7 +279,7 @@
         b = method(time, this.matrix.mat[0][1], bDelta, duration);
         c = method(time, this.matrix.mat[1][0], cDelta, duration);
         d = method(time, this.matrix.mat[1][1], dDelta, duration);
-        ret(new curtains.geom.Matrix2D([[a, b], [c, d]]));
+        ret = new curtains.geom.Matrix2D([[a, b], [c, d]]);
         return this.render(ret);
       };
 
@@ -421,9 +288,12 @@
         return this.rotation = curtains.geom.Utils.deg2rad(deg);
       };
 
-      MatrixValue.prototype.skew = function(x, y) {};
+      MatrixValue.prototype.translate = function(x, y) {
+        this.matrix.tx = x;
+        return this.matrix.ty = y;
+      };
 
-      MatrixValue.prototype.translate = function(x, y) {};
+      MatrixValue.prototype.skew = function(x, y) {};
 
       MatrixValue.prototype.scale = function(x, y) {};
 
@@ -532,7 +402,6 @@
       Animation.prototype.invalidateCrew = function(frameNum) {
         var actor, frame, frames, ret, _i, _j, _k, _len, _len2, _len3, _ref;
         if (frameNum == null) frameNum = this.currentFrame;
-        console.log("Invalidating crew...");
         ret = [];
         frames = this.actors.slice(0, frameNum + 1 || 9e9);
         for (frame in frames) {
@@ -649,7 +518,6 @@
       };
 
       Animation.prototype.addKeyframe = function(frameNum, callback) {
-        console.log("Adding keyframe to " + this.name + " at " + frameNum);
         if (!this.frames[frameNum]) this.frames[frameNum] = [];
         return this.frames[frameNum].push(callback);
       };
@@ -688,7 +556,6 @@
           _this = this;
         if (frameNum == null) frameNum = 1;
         if (framesDuration == null) framesDuration = 100;
-        console.log("Adding child " + animation.name + " to " + this.name + " on frame " + frameNum);
         animation.detach();
         animation.firstFrame = frameNum;
         if (!this.actors[frameNum]) this.actors[frameNum] = [];
@@ -732,10 +599,8 @@
           _this = this;
         self = this;
         tweenCallback = null;
-        console.log("Creating tween " + propName + " " + fromFrame + "-" + toFrame);
         this.addKeyframe(fromFrame, function() {
           var from, to;
-          console.log("Starting tween on " + _this.name + " / " + propName);
           self.removeListener('enterFrame', tweenCallback);
           from = _this.get(propName);
           to = new curtains.utils.ValueFactory.getValue(toValue, propName);
@@ -752,7 +617,7 @@
 
       Actor.prototype.tween = function(propName, fromFrame, toFrame, fromValue, toValue, method) {
         var allFrames, newVal, tweenFrame;
-        if (method == null) method = ease.Quad.inOut;
+        if (method == null) method = curtains.ease.Quad.inOut;
         allFrames = toFrame - fromFrame;
         tweenFrame = this.currentFrame - fromFrame;
         newVal = fromValue.tweenTo(tweenFrame, allFrames, toValue, method);
@@ -858,7 +723,7 @@
       };
 
       CssActor.prototype.get = function(propName) {
-        var bl, br, raw, tl, tr;
+        var bl, br, matrixVal, raw, tl, tr;
         if (propName === 'border-radius') {
           tl = this.html.css('border-top-left-radius');
           tr = this.html.css('border-top-right-radius');
@@ -866,8 +731,10 @@
           bl = this.html.css('border-bottom-left-radius');
           raw = [tl, tr, br, bl].join(' ');
         } else {
-          if (propName.indexOf('trans') >= 0) {
+          if (propName.indexOf('trans') >= 0 && propName.indexOf('origin') < 0) {
             raw = this.html.css('-moz-transform') || this.html.css('-webkit-transform') || this.html.css('-o-transform') || this.html.css('-ms-transform');
+            matrixVal = curtains.utils.ValueFactory.getValue(raw, propName);
+            return matrixVal;
           } else {
             raw = this.html.css(propName);
           }
@@ -876,13 +743,18 @@
       };
 
       CssActor.prototype.set = function(propName, value) {
-        if (propName.indexOf('trans') >= 0) {
+        if (propName.indexOf('origin') >= 0) {
+          this.html.css('-moz-transform-origin', value);
+          this.html.css('-webkit-transform-origin', value);
+          this.html.css('-o-transform-origin', value);
+          return this.html.css('-ms-transform-origin', value);
+        } else if (propName.indexOf('trans') >= 0) {
           this.html.css('-moz-transform', value);
           this.html.css('-webkit-transform', value);
           this.html.css('-o-transform', value);
-          this.html.css('-ms-transform', value);
+          return this.html.css('-ms-transform', value);
         } else {
-          this.html.css(propName, value);
+          return this.html.css(propName, value);
         }
       };
 

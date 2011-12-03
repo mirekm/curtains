@@ -52,9 +52,11 @@
         return [[1, 0], [0, 1]];
       };
 
-      function Matrix2D(mat) {
+      function Matrix2D(mat, tx, ty) {
         var _ref;
         this.mat = mat != null ? mat : curtains.geom.Matrix2D.identity2x2();
+        this.tx = tx != null ? tx : 0;
+        this.ty = ty != null ? ty : 0;
         this.height = this.mat.length;
         this.width = (_ref = this.mat) != null ? _ref[0].length : void 0;
         this.w = this.width - 1;
@@ -109,7 +111,7 @@
             ret[i][j] = sum;
           }
         }
-        return new curtains.geom.Matrix2D(ret);
+        return new curtains.geom.Matrix2D(ret, this.tx, this.ty);
       };
 
       Matrix2D.prototype.compare = function(matrix) {
@@ -117,7 +119,7 @@
       };
 
       Matrix2D.prototype.rotate = function(angle, inDegrees) {
-        var a1, c1, cos, na, nb, nc, nd, sin;
+        var a1, c1, cos, na, nb, nc, nd, ntx, nty, ret, sin, tx1;
         if (inDegrees) angle = curtains.geom.Utils.deg2rad(angle);
         sin = Math.sin(angle);
         cos = Math.cos(angle);
@@ -127,7 +129,18 @@
         nb = a1 * sin + this.mat[0][1] * cos;
         nc = c1 * cos - this.mat[1][1] * sin;
         nd = c1 * sin + this.mat[1][1] * cos;
-        return this.multiply(new curtains.geom.Matrix2D([[na, nb], [nc, nd]]));
+        tx1 = this.tx;
+        ntx = tx1 * cos - this.ty * sin;
+        nty = tx1 * sin + this.ty * cos;
+        ret = this.multiply(new curtains.geom.Matrix2D([[na, nb], [nc, nd]]));
+        ret.tx = ntx;
+        ret.ty = nty;
+        return ret;
+      };
+
+      Matrix2D.prototype.translate = function(x, y) {
+        this.tx += x;
+        return this.ty += y;
       };
 
       return Matrix2D;

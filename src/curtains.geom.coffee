@@ -29,7 +29,7 @@ Array::compare = (to) ->
         @identity2x2 = () ->
             [[1, 0],
              [0, 1]]
-        constructor: (@mat=curtains.geom.Matrix2D.identity2x2()) ->
+        constructor: (@mat=curtains.geom.Matrix2D.identity2x2(), @tx = 0, @ty = 0) ->
             #console.log "Creating new matrix #{@mat}"
             @height = @mat.length
             @width = @mat?[0].length
@@ -69,7 +69,7 @@ Array::compare = (to) ->
                     for k in [0..@w]
                         sum += @mat[i][k] * mulBy.mat[k][j]
                     ret[i][j] = sum
-            new curtains.geom.Matrix2D ret
+            new curtains.geom.Matrix2D ret, @tx, @ty
         compare: (matrix) ->
             @mat.compare(matrix.mat)
         rotate: (angle, inDegrees) ->
@@ -83,6 +83,13 @@ Array::compare = (to) ->
             nb = a1*sin+@mat[0][1]*cos
             nc = c1*cos-@mat[1][1]*sin
             nd = c1*sin+@mat[1][1]*cos
-            #ntx = tx1*cos-this.ty*sin;
-            #nty = tx1*sin+this.ty*cos; 
-            @multiply new curtains.geom.Matrix2D [[na, nb], [nc, nd]]
+            tx1 = @tx
+            ntx = tx1*cos-@ty*sin
+            nty = tx1*sin+@ty*cos
+            ret = @multiply new curtains.geom.Matrix2D [[na, nb], [nc, nd]]
+            ret.tx = ntx
+            ret.ty = nty
+            ret
+        translate: (x, y) ->
+            @tx += x
+            @ty += y

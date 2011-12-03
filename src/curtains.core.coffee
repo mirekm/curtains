@@ -21,64 +21,6 @@ Array::sortBy = (key) -> @sort (a, b) =>
 
 root = exports ? @
 
-@module 'ease', ->
-    class @Linear
-        @in = (t, b, c, d) ->
-            b + c * t/d
-        @out = (t, b, c, d) ->
-            ease.Linear.in t, b, c, d
-        @inOut = (t, b, c, d) ->
-            ease.Linear.in t, b, c, d
-
-    class @Quad
-        @in = (t, b, c, d) ->
-            b + c * (t/=d) * t
-        @out = (t, b, c, d) ->
-            b - c * (t/=d) * (t-2)
-        @inOut = (t, b, c, d) ->
-            if (t/=d/2) < 1
-                b + c/2 * t * t
-            else
-                b - c/2 * ((--t)*(t-2) - 1)
-    class @Cubic
-        @in = (t, b, c, d) ->
-            b + c * Math.pow(t/d, 3)
-        @out = (t, b, c, d) ->
-            b + c * (Math.pow(t/d-1, 3) + 1)
-        @inOut = (t, b, c, d) ->
-            if (t/=d/2) < 1
-                b + c/2 * Math.pow(t, 3)
-            else
-                b + c/2 * (Math.pow(t-2, 3) + 2)
-    class @Sine
-        @in = (t, b, c, d) ->
-            b + c * (1 - Math.cos(t/d * (Math.PI/2)))
-        @out = (t, b, c, d) ->
-            b + c * Math.sin(t/d * (Math.PI/2))
-        @inOut = (t, b, c, d) ->
-            b + c/2 * (1 - Math.cos(Math.PI * t/d))
-
-    class @Circ
-        @in = (t, b, c, d) ->
-            b + c * (1 - Math.sqrt(1 - (t/=d)*t))
-        @out = (t, b, c, d) ->
-            b + c * Math.sqrt(1 - (t=t/d-1)*t)
-        @inOut = (t, b, c, d) ->
-            if (t/=d/2) < 1
-                b + c/2 * (1 - Math.sqrt(1 - t*t))
-            else
-                b + c/2 * (Math.sqrt(1 - (t-=2) * t) + 1)
-
-    class @Expo
-        @in = (t, b, c, d) ->
-            b + c * Math.pow(2, 10 * (t/d - 1))
-        @out = (t, b, c, d) ->
-            b + c * (-Math.pow(2, -10 * t/d) + 1)
-        @inOut = (t, b, c, d) ->
-            if (t/=d/2) < 1
-                b + c/2 * Math.pow(2, 10 * (t - 1))
-            else
-                b + c/2 * (-Math.pow(2, -10 * --t) + 2)
 
 @module 'curtains.utils', ->
     class @ValueFactory
@@ -90,7 +32,7 @@ root = exports ? @
         @getValue: (raw, propName='') ->
             if isNaN raw
                 if typeof(raw) is 'string' and raw.length
-                    if propName.indexOf('trans') >= 0
+                    if propName.indexOf('origin') < 0 and propName.indexOf('trans') >= 0
                         transform = new curtains.utils.MatrixValue raw
                         if transform.ok
                             return transform
@@ -175,10 +117,10 @@ root = exports ? @
         constructor: (raw) ->
             @ok = true
             val = raw.match /[-+]?[0-9]*\.?[0-9]+/gi
-            translate = raw[0..2]
+            transform = raw[0..2]
             @matrix = new curtains.geom.Matrix2D()
             @rotation = 0
-            switch translate
+            switch transform
                 when 'mat'
                     # |(0) cos(rot), (1) -sin(rot)| |(4) tx|
                     # |(2) sin(rot), (3)  cos(rot)| |(5) ty|
@@ -200,7 +142,9 @@ root = exports ? @
             return "matrix(#{toRender.mat[0][0].toFixed(6)},
                            #{toRender.mat[0][1].toFixed(6)},
                            #{toRender.mat[1][0].toFixed(6)},
-                           #{toRender.mat[1][1].toFixed(6)}, 0, 0)"
+                           #{toRender.mat[1][1].toFixed(6)},
+                           #{+toRender.tx}pt,
+                           #{+toRender.ty}pt)"
         tweenTo: (time, duration, to, method) ->
             interpolated = method(time,
                                   @rotation,
@@ -208,6 +152,7 @@ root = exports ? @
                                   duration)
             rotated = @matrix.rotate interpolated
             @render rotated
+
         # Deprecated
         interpolateMatrix: (time, duration, to, method) ->
             aDelta = to.matrix.mat[0][0] - @matrix.mat[0][0]
@@ -218,14 +163,14 @@ root = exports ? @
             b = method(time, @matrix.mat[0][1], bDelta, duration)
             c = method(time, @matrix.mat[1][0], cDelta, duration)
             d = method(time, @matrix.mat[1][1], dDelta, duration)
-            ret new curtains.geom.Matrix2D([[a, b], [c, d]])
+            ret = new curtains.geom.Matrix2D([[a, b], [c, d]])
             @render ret
         rotate: (deg=@rot) ->
             @rotation = curtains.geom.Utils.deg2rad(deg)
-            #@matrix = @matrix.rotate(deg, true)
-        skew: (x, y) ->
-            # TODO:
         translate: (x, y) ->
+            @matrix.tx = x
+            @matrix.ty = y
+        skew: (x, y) ->
             # TODO:
         scale: (x, y) ->
             # TODO:
@@ -286,7 +231,6 @@ root = exports ? @
         _getNextId: () ->
             Animation._objectId++
         invalidateCrew: (frameNum = @currentFrame) ->
-            console.log "Invalidating crew..."
             ret = []
             frames = @actors[0..frameNum]
             for frame of frames
@@ -373,7 +317,7 @@ root = exports ? @
         setCurrentFrame: (frameNum) ->
             @currentFrame = if @totalFrames >= frameNum >= 0 then parseInt frameNum else 0
         addKeyframe: (frameNum, callback) ->
-            console.log "Adding keyframe to #{@name} at #{frameNum}"
+            #console.log "Adding keyframe to #{@name} at #{frameNum}"
             unless @frames[frameNum]
                 @frames[frameNum] = []
             @frames[frameNum].push callback
@@ -390,7 +334,7 @@ root = exports ? @
                 if animation in @actors[frame]
                     @actors[frame].remove animation
         dropOnStage: (animation, frameNum=1, framesDuration=100) ->
-            console.log "Adding child #{animation.name} to #{@name} on frame #{frameNum}"
+            #console.log "Adding child #{animation.name} to #{@name} on frame #{frameNum}"
             animation.detach()
             animation.firstFrame = frameNum
             unless @actors[frameNum] then @actors[frameNum] = []
@@ -422,9 +366,7 @@ root = exports ? @
         tweenProperty: (propName, fromFrame, toFrame, toValue) ->
             self = @
             tweenCallback = null
-            console.log "Creating tween #{propName} #{fromFrame}-#{toFrame}"
             @addKeyframe fromFrame, () =>
-                console.log "Starting tween on #{@name} / #{propName}"
                 self.removeListener 'enterFrame', tweenCallback
                 from = @get propName
                 to = new curtains.utils.ValueFactory.getValue toValue, propName
@@ -434,7 +376,7 @@ root = exports ? @
                 self.addListener 'enterFrame', tweenCallback
             @addKeyframe toFrame+1, () =>
                 self.removeListener 'enterFrame', tweenCallback
-        tween: (propName, fromFrame, toFrame, fromValue, toValue, method=ease.Quad.inOut) ->
+        tween: (propName, fromFrame, toFrame, fromValue, toValue, method=curtains.ease.Quad.inOut) ->
             allFrames = toFrame - fromFrame
             tweenFrame = @currentFrame - fromFrame
             newVal = fromValue.tweenTo(tweenFrame, allFrames, toValue, method)
@@ -504,23 +446,29 @@ root = exports ? @
                 bl = @html.css 'border-bottom-left-radius'
                 raw = [tl, tr, br, bl].join(' ')
             else
-                if propName.indexOf('trans') >= 0
+                if propName.indexOf('trans') >= 0 and propName.indexOf('origin') < 0
                     raw = @html.css('-moz-transform') or
                           @html.css('-webkit-transform') or
                           @html.css('-o-transform') or
                           @html.css('-ms-transform')
+                    matrixVal = curtains.utils.ValueFactory.getValue raw, propName
+                    return matrixVal
                 else
                     raw = @html.css propName
             curtains.utils.ValueFactory.getValue raw, propName
         set: (propName, value) ->
-            if propName.indexOf('trans') >= 0
+            if propName.indexOf('origin') >= 0
+                @html.css '-moz-transform-origin', value
+                @html.css '-webkit-transform-origin', value
+                @html.css '-o-transform-origin', value
+                @html.css '-ms-transform-origin', value
+            else if propName.indexOf('trans') >= 0
                 @html.css '-moz-transform', value
                 @html.css '-webkit-transform', value
                 @html.css '-o-transform', value
                 @html.css '-ms-transform', value
             else
                 @html.css propName, value
-            return
 
         visible: (isVisible) ->
             visibility = 'none'
