@@ -361,11 +361,12 @@
 
       EventDispatcher.prototype.dispatchEvent = function(event) {
         var i, l, listeners, _len, _results;
-        listeners = this.listeners[event] || [];
+        event = this.listeners[event];
+        listeners = event ? event.slice(0, event.length) : [];
         _results = [];
         for (i = 0, _len = listeners.length; i < _len; i++) {
           l = listeners[i];
-          _results.push(l != null ? l.apply({
+          _results.push(l != null ? l.apply(this, {
             event: event,
             sender: this
           }) : void 0);
@@ -535,17 +536,17 @@
         this.goto(frameNum);
         this._startListeners();
         this._beat();
-        return this.dispatchEvent('onStart');
+        return this.dispatchEvent('start');
       };
 
       Animation.prototype.reverse = function() {
         this.direction *= -1;
-        return this.dispatchEvent('onReverse');
+        return this.dispatchEvent('reverse');
       };
 
       Animation.prototype.stop = function(frameNum) {
         this._stopListeners();
-        this.dispatchEvent('onStop');
+        this.dispatchEvent('stop');
         if (frameNum) return this.goto(frameNum);
       };
 
@@ -623,6 +624,42 @@
         return this.addKeyframe(frameNum + framesDuration, unstageAction);
       };
 
+      Animation.prototype.tweenActor = function(actor, propName, propValue, fromFrame, toFrame, method) {
+        var self, tweenCallback,
+          _this = this;
+        if (method == null) method = curtains.ease.Quad.inOut;
+        if (!toFrame) toFrame = fromFrame;
+        self = this;
+        tweenCallback = null;
+        this.addKeyframe(fromFrame, function() {
+          var from, to;
+          if (self.direction === -1) return;
+          self.removeListener('enterFrame', tweenCallback);
+          from = actor.get(propName);
+          to = new curtains.utils.ValueFactory.getValue(propValue, propName);
+          from.unit = to.unit;
+          tweenCallback = function() {
+            var allFrames, newVal, tweenFrame;
+            tweenFrame = self.currentFrame - fromFrame;
+            if (tweenFrame === -1) {
+              self.removeListener('enterFrame', tweenCallback);
+              return;
+            }
+            allFrames = toFrame - fromFrame;
+            newVal = from.tweenTo(tweenFrame, allFrames, to, method);
+            return actor.set(propName, newVal);
+          };
+          return self.addListener('enterFrame', tweenCallback);
+        });
+        return this.addKeyframe(toFrame + 1, function() {
+          if (self.direction < 1) {
+            return self.addListener('enterFrame', tweenCallback);
+          } else {
+            return self.removeListener('enterFrame', tweenCallback);
+          }
+        });
+      };
+
       return Animation;
 
     }).call(this);
@@ -635,39 +672,12 @@
         Actor.__super__.constructor.call(this, totalFrames, name);
       }
 
-      Actor.prototype.tweenProperty = function(propName, fromFrame, toFrame, toValue) {
-        var self, tweenCallback,
-          _this = this;
-        self = this;
-        tweenCallback = null;
-        this.addKeyframe(fromFrame, function() {
-          var from, to;
-          self.removeListener('enterFrame', tweenCallback);
-          from = _this.get(propName);
-          to = new curtains.utils.ValueFactory.getValue(toValue, propName);
-          from.unit = to.unit;
-          tweenCallback = function() {
-            return self.tween(propName, fromFrame, toFrame, from, to);
-          };
-          return self.addListener('enterFrame', tweenCallback);
-        });
-        return this.addKeyframe(toFrame + 1, function() {
-          return self.removeListener('enterFrame', tweenCallback);
-        });
-      };
-
-      Actor.prototype.tween = function(propName, fromFrame, toFrame, fromValue, toValue, method) {
-        var allFrames, newVal, tweenFrame;
-        if (method == null) method = curtains.ease.Quad.inOut;
-        allFrames = toFrame - fromFrame;
-        tweenFrame = this.currentFrame - fromFrame;
-        newVal = fromValue.tweenTo(tweenFrame, allFrames, toValue, method);
-        return this.set(propName, newVal);
-      };
-
       Actor.prototype.stage = function(onStage) {
         Actor.__super__.stage.call(this, onStage);
-        if (!onStage) return this.reset();
+        if (!onStage) {
+          parent.detach;
+          return this.reset();
+        }
       };
 
       Actor.prototype.reset = function() {

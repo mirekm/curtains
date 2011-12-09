@@ -209,9 +209,10 @@ root = exports ? @
             if event of @listeners
                 @listeners[event].remove callback
         dispatchEvent: (event) ->
-            listeners = @listeners[event] or []
+            event = @listeners[event]
+            listeners = if event then event[0...event.length] else []
             for l, i in listeners
-                l?.apply {event: event, sender: @}
+                l?.apply @, {event: event, sender: @}
 
 
     class @Heart extends @EventDispatcher
@@ -319,14 +320,14 @@ root = exports ? @
             @goto(frameNum)
             @_startListeners()
             @_beat()
-            @dispatchEvent 'onStart'
+            @dispatchEvent 'start'
         reverse: () ->
             @direction *= -1
-            @dispatchEvent 'onReverse'
+            @dispatchEvent 'reverse'
         # - It's over Johnny. It's over.
         stop: (frameNum) ->
             @_stopListeners()
-            @dispatchEvent 'onStop'
+            @dispatchEvent 'stop'
             if frameNum then @goto frameNum
         # Jumping from one frame to another within a script requires veryfication of a crew.
         # Some actors may have to leave the stage and the other may need to appear.
@@ -379,32 +380,40 @@ root = exports ? @
                 else
                     animation.stage on
             @addKeyframe frameNum+framesDuration, unstageAction
+        tweenActor: (actor, propName, propValue, fromFrame, toFrame, method=curtains.ease.Quad.inOut) ->
+            unless toFrame
+                toFrame = fromFrame
+            self = @
+            tweenCallback = null
+            @addKeyframe fromFrame, () =>
+                if self.direction is -1 then return
+                self.removeListener 'enterFrame', tweenCallback
+                from = actor.get propName
+                to = new curtains.utils.ValueFactory.getValue propValue, propName
+                from.unit = to.unit
+                tweenCallback = () =>
+                    tweenFrame = self.currentFrame - fromFrame
+                    if tweenFrame is -1
+                        self.removeListener 'enterFrame', tweenCallback
+                        return
+                    allFrames = toFrame - fromFrame
+                    newVal = from.tweenTo tweenFrame, allFrames, to, method
+                    actor.set propName, newVal
+                self.addListener 'enterFrame', tweenCallback
+            @addKeyframe toFrame+1, () =>
+                if self.direction < 1
+                    self.addListener 'enterFrame', tweenCallback
+                else
+                    self.removeListener 'enterFrame', tweenCallback
 
 
     class @Actor extends @Animation
         constructor: (totalFrames, @initialProperties={}, name) ->
             super totalFrames, name
-        tweenProperty: (propName, fromFrame, toFrame, toValue) ->
-            self = @
-            tweenCallback = null
-            @addKeyframe fromFrame, () =>
-                self.removeListener 'enterFrame', tweenCallback
-                from = @get propName
-                to = new curtains.utils.ValueFactory.getValue toValue, propName
-                from.unit = to.unit
-                tweenCallback = () =>
-                    self.tween(propName, fromFrame, toFrame, from, to)
-                self.addListener 'enterFrame', tweenCallback
-            @addKeyframe toFrame+1, () =>
-                self.removeListener 'enterFrame', tweenCallback
-        tween: (propName, fromFrame, toFrame, fromValue, toValue, method=curtains.ease.Quad.inOut) ->
-            allFrames = toFrame - fromFrame
-            tweenFrame = @currentFrame - fromFrame
-            newVal = fromValue.tweenTo(tweenFrame, allFrames, toValue, method)
-            @set propName, newVal
         stage: (onStage) ->
             super onStage
             unless onStage
+                parent.detach
                 do @reset
         reset: () ->
             for prop of @initialProperties
