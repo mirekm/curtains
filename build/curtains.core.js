@@ -23,7 +23,7 @@
   Array.prototype.sortBy = function(key) {
     var _this = this;
     return this.sort(function(a, b) {
-      return a.key - b.key;
+      return a[key] - b[key];
     });
   };
 

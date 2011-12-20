@@ -8,7 +8,7 @@ Released under MIT Licence.
 
 Array::remove = (e) -> @[t..t] = [] if (t = @indexOf(e)) > -1
 Array::sortBy = (key) -> @sort (a, b) =>
-    a.key - b.key
+    a[key] - b[key]
 
 @module = (names, fn) ->
     names = names.split '.' if typeof names is 'string'
