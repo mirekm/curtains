@@ -590,7 +590,6 @@
         var stageAction, unstageAction,
           _this = this;
         if (frameNum == null) frameNum = 1;
-        if (framesDuration == null) framesDuration = 100;
         animation.detach();
         animation.firstFrame = frameNum;
         if (!this.actors[frameNum]) this.actors[frameNum] = [];
@@ -607,14 +606,16 @@
           }
         };
         this.addKeyframe(frameNum, stageAction);
-        unstageAction = function() {
-          if (_this.direction > 0) {
-            return animation.stage(false);
-          } else {
-            return animation.stage(true);
-          }
-        };
-        return this.addKeyframe(frameNum + framesDuration, unstageAction);
+        if (framesDuration) {
+          unstageAction = function() {
+            if (_this.direction > 0) {
+              return animation.stage(false);
+            } else {
+              return animation.stage(true);
+            }
+          };
+          return this.addKeyframe(frameNum + framesDuration, unstageAction);
+        }
       };
 
       Animation.prototype.tweenActor = function(actor, propName, propValue, fromFrame, toFrame, method) {
@@ -811,7 +812,6 @@
 
       CssActor.prototype.dropOnStage = function(animation, frameNum, framesDuration) {
         if (frameNum == null) frameNum = 1;
-        if (framesDuration == null) framesDuration = 100;
         CssActor.__super__.dropOnStage.call(this, animation, frameNum, framesDuration);
         if (this.reattachChildren) {
           this.html.append(animation.html);

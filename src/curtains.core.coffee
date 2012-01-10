@@ -353,7 +353,7 @@ root = exports ? @
             for frame in @actors
                 if animation in @actors[frame]
                     @actors[frame].remove animation
-        dropOnStage: (animation, frameNum=1, framesDuration=100) ->
+        dropOnStage: (animation, frameNum=1, framesDuration) ->
             #console.log "Adding child #{animation.name} to #{@name} on frame #{frameNum}"
             animation.detach()
             animation.firstFrame = frameNum
@@ -372,12 +372,13 @@ root = exports ? @
                     animation.stage off
                     animation.stop(0)
             @addKeyframe frameNum, stageAction
-            unstageAction = () =>
-                if @direction > 0
-                    animation.stage off
-                else
-                    animation.stage on
-            @addKeyframe frameNum+framesDuration, unstageAction
+            if framesDuration
+                unstageAction = () =>
+                    if @direction > 0
+                        animation.stage off
+                    else
+                        animation.stage on
+                @addKeyframe frameNum+framesDuration, unstageAction
         tweenActor: (actor, propName, propValue, fromFrame, toFrame, method=curtains.ease.Quad.inOut) ->
             unless toFrame
                 toFrame = fromFrame
@@ -502,7 +503,7 @@ root = exports ? @
             visibility = 'none'
             if isVisible then visibility = 'block'
             @html.css 'display', visibility
-        dropOnStage: (animation, frameNum=1, framesDuration=100) ->
+        dropOnStage: (animation, frameNum=1, framesDuration) ->
             super animation, frameNum, framesDuration
             if @reattachChildren
                 @html.append(animation.html)
